@@ -50,6 +50,16 @@ describe("parseGrabReceipt", () => {
     expect(parseGrabReceipt(body, internalDate)).toBeNull();
   });
 
+  it("returns null for GrabFood receipt", () => {
+    const body = "Grab E-Receipt\nGrabFood\nOrder Summary\nTotal: S$25.00\nDelivery Fee: S$3.00";
+    expect(parseGrabReceipt(body, internalDate)).toBeNull();
+  });
+
+  it("returns null for GrabMart receipt", () => {
+    const body = "Grab E-Receipt\nGrabMart\nYour Order\nTotal: S$15.00";
+    expect(parseGrabReceipt(body, internalDate)).toBeNull();
+  });
+
   it("uses internalDate as ride date", () => {
     const body = "Your Grab trip receipt\nTotal: S$10.00";
     const result = parseGrabReceipt(body, internalDate);

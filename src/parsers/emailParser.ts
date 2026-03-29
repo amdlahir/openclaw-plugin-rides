@@ -41,6 +41,19 @@ export function parseGrabReceipt(
     return null;
   }
 
+  // Reject GrabFood, GrabMart, and other non-ride receipts
+  if (
+    body.includes("grabfood") ||
+    body.includes("grab food") ||
+    body.includes("grabmart") ||
+    body.includes("grab mart") ||
+    body.includes("order summary") ||
+    body.includes("delivery fee") ||
+    body.includes("your order")
+  ) {
+    return null;
+  }
+
   let amount: number | null = null;
   let currency = "SGD";
   let pickup: string | null = null;

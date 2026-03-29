@@ -144,3 +144,21 @@ export function createRidesSyncCommand(db: Client, syncFn: (months?: number) => 
     },
   };
 }
+
+export function createRidesResetCommand(db: Client) {
+  return {
+    name: "rides_reset",
+    description: "Delete all rides and reset the sync cursor. This cannot be undone.",
+    requireAuth: false,
+    handler: async () => {
+      const countResult = await db.execute("SELECT COUNT(*) as count FROM rides");
+      const count = Number(countResult.rows[0].count);
+
+      await db.execute("DELETE FROM rides");
+      await db.execute("DELETE FROM sync_logs");
+      await db.execute("UPDATE sync_state SET last_sync_at = NULL WHERE id = 1");
+
+      return { text: `Reset complete. Deleted ${count} rides, cleared sync logs and cursor.` };
+    },
+  };
+}

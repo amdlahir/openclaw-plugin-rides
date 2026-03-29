@@ -20,6 +20,7 @@ import {
   createRidesCommand,
   createRidesStatsCommand,
   createRidesSyncCommand,
+  createRidesResetCommand,
 } from "./commands/index";
 import type { Client } from "@libsql/client";
 
@@ -388,6 +389,7 @@ export default {
     api.registerCommand(
       createRidesSyncCommand(db, (months) => syncEmails(db, syncConfig, undefined, months)),
     );
+    api.registerCommand(createRidesResetCommand(db));
 
     // Parse failure notification hook
     api.on("session_start", async () => {
