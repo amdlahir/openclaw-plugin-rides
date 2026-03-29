@@ -54,6 +54,7 @@ Add the plugin path and configuration to `~/.openclaw/openclaw.json`:
 ```json
 {
   "plugins": {
+    "allow": ["rides"],
     "load": {
       "paths": ["/path/to/openclaw-plugin-rides-expenditure"]
     },
@@ -72,6 +73,8 @@ Add the plugin path and configuration to `~/.openclaw/openclaw.json`:
   }
 }
 ```
+
+The `allow` array is required for OpenClaw to expose the plugin's AI tools to the agent. Without it, slash commands work but the agent cannot call tools like `log_ride` or `sync_ride_emails`.
 
 Merge this into your existing config -- don't replace the whole file. Keep your existing `plugins.entries` (telegram, whatsapp, etc.) and add the `rides` entry alongside them.
 
@@ -196,7 +199,9 @@ Talk to the bot naturally:
 |---------|-------------|
 | `/rides` | Formatted table of last 10 rides |
 | `/rides_stats` | Current month spending summary with budget status |
-| `/rides_sync` | Trigger Gmail sync and show results |
+| `/rides_sync` | Trigger Gmail sync (new emails since last sync) |
+| `/rides_sync 6` | Sync last 6 months of ride emails |
+| `/rides_reset` | Delete all rides and reset sync cursor (cannot be undone) |
 
 ### Currency
 
@@ -262,7 +267,7 @@ openclaw-plugin-rides-expenditure/
     stats.test.ts               # Spending statistics tests (6 tests)
     budget.test.ts              # Budget management tests (7 tests)
     currency.test.ts            # Currency conversion tests (12 tests)
-    emailParser.test.ts         # Email parser tests (14 tests)
+    emailParser.test.ts         # Email parser tests (16 tests)
     screenshotParser.test.ts    # Screenshot parser utility tests (19 tests)
 ```
 
@@ -282,7 +287,7 @@ npm test              # Run all tests once
 npm run test:watch    # Watch mode
 ```
 
-Tests use real in-memory SQLite databases (not mocks). 76 tests across 6 files.
+Tests use real in-memory SQLite databases (not mocks). 78 tests across 6 files.
 
 ### Making Changes
 
