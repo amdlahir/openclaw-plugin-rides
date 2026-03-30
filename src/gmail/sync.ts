@@ -23,7 +23,7 @@ export type SyncResult = {
   errors: string[];
 };
 
-const PARSERS: Record<string, (body: string, date: string) => ReturnType<typeof parseGrabReceipt>> = {
+const PARSERS: Record<string, typeof parseGrabReceipt> = {
   grab: parseGrabReceipt,
   gojek: parseGojekReceipt,
 };
@@ -118,13 +118,16 @@ export async function syncEmails(
           const parser = PARSERS[prov];
           if (!parser) continue;
 
-          const parsed = parser(emailBody, detail.internalDate);
+          const result = parser(emailBody, detail.internalDate);
           totalProcessed++;
 
-          if (!parsed) {
+          if (result.status === "skipped") continue;
+          if (result.status === "failed") {
             errors.push(`Failed to parse ${prov} receipt from message ${msg.id}`);
             continue;
           }
+
+          const parsed = result.data;
 
           // Normalize amount
           const { normalizedAmount, normalizedCurrency } = await normalizeRideAmount(

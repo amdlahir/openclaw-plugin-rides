@@ -9,6 +9,11 @@ export interface ParsedRide {
 
 export type RideProvider = "grab" | "gojek";
 
+export type ParseResult =
+  | { status: "parsed"; data: ParsedRide }
+  | { status: "skipped"; reason: string }
+  | { status: "failed" };
+
 function stripHtml(html: string): string {
   return html
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
@@ -30,7 +35,7 @@ function stripHtml(html: string): string {
 export function parseGrabReceipt(
   emailBody: string,
   internalDate: string,
-): ParsedRide | null {
+): ParseResult {
   const cleaned = stripHtml(emailBody);
   const body = cleaned.toLowerCase();
 
@@ -38,20 +43,22 @@ export function parseGrabReceipt(
     !body.includes("grab") ||
     (!body.includes("receipt") && !body.includes("trip"))
   ) {
-    return null;
+    return { status: "skipped", reason: "not a Grab receipt" };
   }
 
   // Reject GrabFood, GrabMart, and other non-ride receipts
+  if (body.includes("grabfood") || body.includes("grab food")) {
+    return { status: "skipped", reason: "GrabFood receipt" };
+  }
+  if (body.includes("grabmart") || body.includes("grab mart")) {
+    return { status: "skipped", reason: "GrabMart receipt" };
+  }
   if (
-    body.includes("grabfood") ||
-    body.includes("grab food") ||
-    body.includes("grabmart") ||
-    body.includes("grab mart") ||
     body.includes("order summary") ||
     body.includes("delivery fee") ||
     body.includes("your order")
   ) {
-    return null;
+    return { status: "skipped", reason: "non-ride receipt (delivery/order)" };
   }
 
   let amount: number | null = null;
@@ -155,24 +162,27 @@ export function parseGrabReceipt(
     }
   }
 
-  if (amount === null) return null;
+  if (amount === null) return { status: "failed" };
 
   const date = parseInt(internalDate, 10);
 
   return {
-    amount,
-    currency,
-    date,
-    pickup,
-    dropoff,
-    confidence: Math.min(confidence, 1.0),
+    status: "parsed",
+    data: {
+      amount,
+      currency,
+      date,
+      pickup,
+      dropoff,
+      confidence: Math.min(confidence, 1.0),
+    },
   };
 }
 
 export function parseGojekReceipt(
   emailBody: string,
   internalDate: string,
-): ParsedRide | null {
+): ParseResult {
   const cleaned = stripHtml(emailBody);
   const body = cleaned.toLowerCase();
 
@@ -181,7 +191,7 @@ export function parseGojekReceipt(
     !body.includes("gocar") &&
     !body.includes("goride")
   ) {
-    return null;
+    return { status: "skipped", reason: "not a Gojek receipt" };
   }
 
   if (
@@ -190,7 +200,7 @@ export function parseGojekReceipt(
     !body.includes("fare") &&
     !body.includes("perjalanan")
   ) {
-    return null;
+    return { status: "skipped", reason: "not a ride receipt" };
   }
 
   let amount: number | null = null;
@@ -253,16 +263,19 @@ export function parseGojekReceipt(
     }
   }
 
-  if (amount === null) return null;
+  if (amount === null) return { status: "failed" };
 
   const date = parseInt(internalDate, 10);
 
   return {
-    amount,
-    currency: "SGD",
-    date,
-    pickup,
-    dropoff,
-    confidence: Math.min(confidence, 1.0),
+    status: "parsed",
+    data: {
+      amount,
+      currency: "SGD",
+      date,
+      pickup,
+      dropoff,
+      confidence: Math.min(confidence, 1.0),
+    },
   };
 }
