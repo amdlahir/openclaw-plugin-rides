@@ -9,10 +9,16 @@ export function createDbClient(dbPath: string): Client {
 
   const dir = path.dirname(dbPath);
   if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+    fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   }
 
   _client = createClient({ url: `file:${dbPath}` });
+
+  // Restrict DB file permissions — contains OAuth tokens
+  if (fs.existsSync(dbPath)) {
+    fs.chmodSync(dbPath, 0o600);
+  }
+
   return _client;
 }
 
