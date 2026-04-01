@@ -1,5 +1,6 @@
 import type { OpenClawPluginCommandDefinition } from "openclaw/plugin-sdk/plugin-entry";
 import type { Client } from "@libsql/client";
+import { clearTokens } from "../tokens";
 
 export function createRidesCommand(db: Client): OpenClawPluginCommandDefinition {
   return {
@@ -160,6 +161,31 @@ export function createRidesResetCommand(db: Client): OpenClawPluginCommandDefini
       await db.execute("UPDATE sync_state SET last_sync_at = NULL WHERE id = 1");
 
       return { text: `Reset complete. Deleted ${count} rides, cleared sync logs and cursor.` };
+    },
+  };
+}
+
+export function createRidesDisconnectCommand(db: Client, tokensPath: string): OpenClawPluginCommandDefinition {
+  return {
+    name: "rides_disconnect",
+    description: "Disconnect Gmail and delete stored OAuth tokens. Ride data is not affected.",
+    requireAuth: false,
+    handler: async () => {
+      clearTokens(tokensPath);
+      await db.execute({
+        sql: "UPDATE sync_state SET email_sync_enabled = 0, gmail_access_token = NULL, gmail_refresh_token = NULL, gmail_token_expires_at = NULL WHERE id = 1",
+        args: [],
+      });
+
+      const lines = [
+        "Gmail disconnected. OAuth tokens have been deleted.",
+        "",
+        "To also revoke this app's access on Google's side, visit:",
+        "https://myaccount.google.com/permissions",
+        "",
+        "To reconnect, visit: {baseUrl}/rides/gmail/auth",
+      ];
+      return { text: lines.join("\n") };
     },
   };
 }

@@ -13,19 +13,18 @@ An OpenClaw plugin for tracking ride-hailing expenses from Grab, Gojek, and Zig 
 > - Anyone with access to your machine (or the DB file) could use the token to read your emails
 >
 > **Token storage details:**
-> - Both the short-lived access token (~1 hour) and the long-lived refresh token are stored in plaintext in the `sync_state` table
+> - OAuth tokens are stored in a **separate file** (`~/.openclaw/rides/tokens.json`), not in the rides database -- this means `rides.db` is safe to back up without exposing credentials
+> - Both the token file and database are created with restricted permissions (`0o600` / `0o700`) automatically
 > - The refresh token **never expires** unless you explicitly revoke it -- a single leak grants persistent Gmail read access
-> - The database file is created with default OS permissions (no `chmod 600` hardening)
-> - If `~/.openclaw/` is included in cloud backups, file syncing, or rsync to shared servers, the tokens travel with it
+> - If `~/.openclaw/rides/tokens.json` is included in cloud backups, file syncing, or rsync to shared servers, the token travels with it
 > - OpenClaw does not currently provide a plugin-level secure storage API, so encryption at rest is not available through the framework
 >
 > **Recommendations:**
 > - Only use this plugin on a machine you trust and control
-> - Do not share the `rides.db` file with anyone
-> - Restrict file permissions on the database: `chmod 600 ~/.openclaw/rides/rides.db`
-> - Exclude `~/.openclaw/rides/` from cloud backup and file sync services
+> - Do not share `tokens.json` with anyone (`rides.db` is safe to share -- it contains no credentials)
+> - Exclude `~/.openclaw/rides/tokens.json` from cloud backup and file sync services
 > - Periodically review connected apps in your [Google Account Security settings](https://myaccount.google.com/permissions) and revoke access if you stop using the plugin
-> - If your machine is compromised, revoke the app's access immediately from Google Account settings
+> - If your machine is compromised, run `/rides_disconnect` to delete local tokens, then revoke the app's access from [Google Account settings](https://myaccount.google.com/permissions)
 >
 > Gmail sync is entirely optional. The plugin works fully without it -- you can log rides manually or via screenshots.
 
@@ -240,6 +239,7 @@ Talk to the bot naturally:
 | `/rides_sync` | Trigger Gmail sync (new emails since last sync) |
 | `/rides_sync 6` | Sync last 6 months of ride emails |
 | `/rides_reset` | Delete all rides and reset sync cursor (cannot be undone) |
+| `/rides_disconnect` | Disconnect Gmail and delete stored OAuth tokens (ride data is kept) |
 
 ### Currency
 
@@ -252,12 +252,12 @@ Rides are stored in their original currency and normalized to your budget curren
 
 ## Data Storage
 
-The database is stored at `~/.openclaw/rides/rides.db` (SQLite via libSQL). It persists independently of the plugin source code.
+The database is stored at `~/.openclaw/rides/rides.db` (SQLite via libSQL). OAuth tokens are stored separately in `~/.openclaw/rides/tokens.json`. Both persist independently of the plugin source code.
 
 **Tables:**
 - `rides` -- individual ride records (original + normalized amounts)
 - `budgets` -- monthly spending limit configuration
-- `sync_state` -- Gmail OAuth tokens and sync cursor (singleton row)
+- `sync_state` -- sync cursor and email sync enabled flag (singleton row)
 - `sync_logs` -- audit trail for email sync operations
 - `exchange_rates` -- cached currency conversion rates
 
@@ -354,6 +354,18 @@ No build step -- OpenClaw loads TypeScript directly via jiti.
 3. Update tool parameter enums in `src/index.ts`
 4. The Frankfurter API supports most world currencies -- no API changes needed
 
+### Disconnecting Gmail
+
+Use `/rides_disconnect` to remove your stored OAuth tokens and disable email sync. Your ride data is not affected. Use this when:
+
+- You no longer want Gmail sync and want to clean up stored credentials
+- You suspect your machine or token file may have been compromised
+- You want to switch to a different Gmail account (disconnect, then re-auth)
+
+`/rides_disconnect` only deletes **local** tokens. The app still appears in your Google account's authorized apps until you also revoke it at [Google Account > Security > Third-party apps](https://myaccount.google.com/permissions). For full cleanup, do both.
+
+To reconnect later, visit `{baseUrl}/rides/gmail/auth` in your browser (see Step 6 under "Setting Up Google Cloud").
+
 ## Troubleshooting
 
 ### Plugin not loading
@@ -383,7 +395,7 @@ Then open `http://localhost:18789/rides/gmail/auth` in your local browser. Googl
 
 ### Email sync finds no rides
 
-- Check that Gmail is connected: tokens should be in `sync_state` table
+- Check that Gmail is connected: `~/.openclaw/rides/tokens.json` should exist with valid tokens
 - Verify the sender email matches what the provider actually uses (check "Show original" in Gmail for the `From:` header)
 - Check `sync_logs` table for error details
 - If you recently added a new provider, the database CHECK constraint may need migrating -- restart the gateway to trigger automatic migration

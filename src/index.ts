@@ -22,6 +22,7 @@ import {
   createRidesStatsCommand,
   createRidesSyncCommand,
   createRidesResetCommand,
+  createRidesDisconnectCommand,
 } from "./commands/index";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk/plugin-entry";
@@ -399,6 +400,7 @@ export default definePluginEntry({
       createRidesSyncCommand(db, (months) => syncEmails(db, syncConfig, undefined, months, undefined, tokensPath)),
     );
     api.registerCommand(createRidesResetCommand(db));
+    api.registerCommand(createRidesDisconnectCommand(db, tokensPath));
 
     // Parse failure notification hook
     api.on("before_prompt_build", async (_event, _ctx) => {
