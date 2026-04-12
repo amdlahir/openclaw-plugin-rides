@@ -369,6 +369,37 @@ Use `/rides_disconnect` to remove your stored OAuth tokens and disable email syn
 
 To reconnect later, visit `{baseUrl}/rides/gmail/auth` in your browser (see Step 6 under "Setting Up Google Cloud").
 
+## Uninstalling
+
+To fully remove the plugin and all its data:
+
+### 1. Remove plugin config from openclaw.json
+
+Edit `~/.openclaw/openclaw.json` and remove all `rides` references from four places:
+
+- `plugins.allow` — remove `"rides"` from the array
+- `plugins.entries` — remove the `"rides"` key
+- `plugins.load.paths` — remove the path to this repo
+- `plugins.installs` — remove the `"rides"` key
+
+### 2. Delete local data
+
+```bash
+rm -rf ~/.openclaw/rides/
+```
+
+This removes the SQLite database (rides, budgets, sync state) and OAuth tokens.
+
+### 3. Restart the gateway
+
+```bash
+openclaw gateway restart
+```
+
+### 4. Revoke Google access (if Gmail was connected)
+
+Visit [Google Account > Security > Third-party apps](https://myaccount.google.com/permissions) and revoke the OpenClaw Rides app.
+
 ## Troubleshooting
 
 ### Plugin not loading

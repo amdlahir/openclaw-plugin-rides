@@ -70,6 +70,13 @@ const SYNC_LOGS_INDEX = `
 CREATE INDEX IF NOT EXISTS idx_sync_logs_timestamp ON sync_logs (timestamp);
 `;
 
+const PLUGIN_STATE_TABLE = `
+CREATE TABLE IF NOT EXISTS plugin_state (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+`;
+
 const EXCHANGE_RATES_TABLE = `
 CREATE TABLE IF NOT EXISTS exchange_rates (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -119,6 +126,7 @@ export async function runMigrations(db: Client): Promise<void> {
     SYNC_STATE_SEED,
     SYNC_LOGS_TABLE,
     SYNC_LOGS_INDEX,
+    PLUGIN_STATE_TABLE,
     EXCHANGE_RATES_TABLE,
     EXCHANGE_RATES_INDEX,
   ];

@@ -16,6 +16,7 @@ import { handleSyncRideEmails } from "./tools/sync";
 import { syncEmails } from "./gmail/sync";
 import { createEmailSyncService } from "./services/emailSync";
 import { checkUnnotifiedSyncErrors } from "./hooks/syncNotifications";
+import { checkGmailSetupNotification } from "./hooks/gmailSetupNotification";
 import { handleParseReceiptScreenshot } from "./tools/screenshot";
 import {
   createRidesCommand,
@@ -342,11 +343,13 @@ export default definePluginEntry({
     api.registerCommand(createRidesResetCommand(db));
     api.registerCommand(createRidesDisconnectCommand(db, tokensPath));
 
-    // Parse failure notification hook
+    // Notification hooks
     api.on("before_prompt_build", async (_event, _ctx) => {
-      const message = await checkUnnotifiedSyncErrors(db);
-      if (message) {
-        return { appendSystemContext: message };
+      const syncErrors = await checkUnnotifiedSyncErrors(db);
+      const gmailSetup = await checkGmailSetupNotification(db);
+      const messages = [syncErrors, gmailSetup].filter((m): m is string => m != null);
+      if (messages.length > 0) {
+        return { appendSystemContext: messages.join("\n\n") };
       }
     });
   },
