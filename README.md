@@ -58,81 +58,82 @@ An OpenClaw plugin for tracking ride-hailing expenses from Grab, Gojek, and Zig 
 ## Requirements
 
 - [OpenClaw](https://openclaw.dev) installed and running
-- Node.js 18+
 - A Google Cloud project (for Gmail sync and optional screenshot parsing)
 
 ## Installation
 
-### 1. Clone and install dependencies
+### Option A: Install from ClawHub
+
+```bash
+openclaw plugins install clawhub:openclaw-plugin-rides
+openclaw gateway restart
+```
+
+### Option B: Install from source (for development)
 
 ```bash
 git clone https://github.com/amdlahir/openclaw-plugin-rides.git
 cd openclaw-plugin-rides
 npm install
+openclaw plugins install -l .
+openclaw gateway restart
 ```
 
-### 2. Register the plugin with OpenClaw
+The `-l` flag symlinks the plugin directory so OpenClaw reads directly from your source tree -- no reinstall needed after code changes.
 
-Add the plugin path and configuration to `~/.openclaw/openclaw.json`:
+### Plugin loads without config
 
-```json
-{
-  "plugins": {
-    "allow": ["rides"],
-    "load": {
-      "paths": ["/path/to/openclaw-plugin-rides"]
-    },
-    "entries": {
-      "rides": {
-        "enabled": true,
-        "config": {
-          "googleClientId": "YOUR_CLIENT_ID.apps.googleusercontent.com",
-          "googleClientSecret": "YOUR_CLIENT_SECRET",
-          "baseUrl": "http://localhost:18789",
-          "defaultCurrency": "SGD",
-          "defaultCategory": "personal"
-        }
-      }
-    }
-  }
-}
-```
+The plugin works immediately for manual ride logging, budgeting, and stats -- no Google credentials needed. Gmail sync and screenshot parsing require additional config (see [Setting Up Google Cloud](#setting-up-google-cloud-gmail-sync)).
 
-The `allow` array is required for OpenClaw to expose the plugin's AI tools to the agent. Without it, slash commands work but the agent cannot call tools like `log_ride` or `sync_ride_emails`.
-
-**Tool policy:** If your `tools` config uses `profile` (e.g., `"messaging"`), plugin tools are not included by default. Add them via `alsoAllow`:
-
-```json
-{
-  "tools": {
-    "profile": "messaging",
-    "alsoAllow": ["log_ride", "list_rides", "ride_spending_stats", "search_rides", "update_ride", "delete_ride", "set_ride_budget", "get_budget_status", "sync_ride_emails", "parse_receipt_screenshot"]
-  }
-}
-```
-
-Merge this into your existing config -- don't replace the whole file. Keep your existing `plugins.entries` (telegram, whatsapp, etc.) and add the `rides` entry alongside them.
-
-### 3. Restart OpenClaw
-
-```bash
-openclaw gateway stop && openclaw gateway
-```
-
-The plugin loads TypeScript directly via jiti -- no build step needed. You should see:
+You should see in the gateway logs:
 
 ```
 [plugins] Initializing rides plugin, DB at: ...
 [plugins] Database migrations complete
 ```
 
+### Expose tools to the agent
+
+Two config entries are needed for the agent to call plugin tools (slash commands work without these):
+
+**1.** Add `plugins.allow` in `~/.openclaw/openclaw.json`:
+
+```json
+{
+  "plugins": {
+    "allow": ["rides"]
+  }
+}
+```
+
+Without this, slash commands work but the agent cannot call tools like `log_ride` or `sync_ride_emails`.
+
+**2.** If your `tools` config uses `profile` (e.g., `"messaging"` or `"coding"`), plugin tools are excluded by default. Add them via `alsoAllow`:
+
+```json
+{
+  "tools": {
+    "profile": "coding",
+    "alsoAllow": ["log_ride", "list_rides", "ride_spending_stats", "search_rides", "update_ride", "delete_ride", "set_ride_budget", "get_budget_status", "sync_ride_emails", "parse_receipt_screenshot"]
+  }
+}
+```
+
+Merge these into your existing config -- don't replace the whole file. Using `tools.allow` instead of `alsoAllow` will **replace** the profile's tools rather than adding to them.
+
+Restart the gateway after making config changes:
+
+```bash
+openclaw gateway restart
+```
+
 ## Configuration
 
 | Key | Required | Default | Description |
 |-----|----------|---------|-------------|
-| `googleClientId` | Yes | -- | Google OAuth2 Client ID |
-| `googleClientSecret` | Yes | -- | Google OAuth2 Client Secret |
-| `baseUrl` | Yes | -- | URL of your OpenClaw instance (for OAuth redirect) |
+| `googleClientId` | For Gmail sync | -- | Google OAuth2 Client ID |
+| `googleClientSecret` | For Gmail sync | -- | Google OAuth2 Client Secret |
+| `baseUrl` | For Gmail sync | -- | URL of your OpenClaw instance (for OAuth redirect) |
 | `googleAiApiKey` | No | -- | Google AI API key for Gemini 2.0 Flash (enables screenshot parsing) |
 | `defaultCurrency` | No | `SGD` | Default currency for rides and budgets (`SGD`, `USD`, `MYR`) |
 | `defaultCategory` | No | `personal` | Default category for rides (`work`, `personal`) |
@@ -371,7 +372,6 @@ To reconnect later, visit `{baseUrl}/rides/gmail/auth` in your browser (see Step
 ### Plugin not loading
 
 Check the gateway output for errors. Common issues:
-- Missing required config fields (`googleClientId`, `googleClientSecret`, `baseUrl`)
 - Plugin entry key in `openclaw.json` must be `"rides"` (matching the `id` in `openclaw.plugin.json`)
 - Dependencies not installed (`npm install` in the plugin directory)
 
