@@ -96,27 +96,19 @@ You should see in the gateway logs:
 
 Two config entries are needed for the agent to call plugin tools (slash commands work without these).
 
-**CLI (recommended):**
+**Manual (recommended):**
 
-```bash
-openclaw config set plugins.allow '["rides"]'
-openclaw config set tools.alsoAllow '["log_ride","list_rides","search_rides","update_ride","delete_ride","ride_spending_stats","set_ride_budget","get_budget_status","sync_ride_emails","parse_receipt_screenshot"]'
-openclaw gateway restart
-```
-
-**Manual:** Add to `~/.openclaw/openclaw.json`:
+Edit `~/.openclaw/openclaw.json` and add `"rides"` to the existing `plugins.allow` array:
 
 ```json
 {
   "plugins": {
-    "allow": ["rides"]
+    "allow": ["telegram", "zai", "memory-core", "rides"]
   }
 }
 ```
 
-Without `plugins.allow`, slash commands work but the agent cannot call tools like `log_ride` or `sync_ride_emails`.
-
-If your `tools` config uses `profile` (e.g., `"messaging"` or `"coding"`), plugin tools are excluded by default. Add them via `alsoAllow`:
+If you use `tools.profile` (e.g., `"coding"` or `"messaging"`), add plugin tools via `alsoAllow`:
 
 ```json
 {
@@ -126,6 +118,18 @@ If your `tools` config uses `profile` (e.g., `"messaging"` or `"coding"`), plugi
   }
 }
 ```
+
+**CLI (alternative):**
+
+> **Warning:** `openclaw config set` replaces the entire value -- it does not merge. Check your current config first with `openclaw config get plugins.allow` and include all existing entries.
+
+```bash
+openclaw config set plugins.allow '["telegram","zai","memory-core","rides"]'
+openclaw config set tools.alsoAllow '["log_ride","list_rides","search_rides","update_ride","delete_ride","ride_spending_stats","set_ride_budget","get_budget_status","sync_ride_emails","parse_receipt_screenshot"]'
+openclaw gateway restart
+```
+
+Without `plugins.allow`, slash commands work but the agent cannot call tools like `log_ride` or `sync_ride_emails`.
 
 Merge these into your existing config -- don't replace the whole file. Using `tools.allow` instead of `alsoAllow` will **replace** the profile's tools rather than adding to them.
 
