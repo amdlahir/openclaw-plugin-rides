@@ -25,7 +25,6 @@ import {
   createRidesDisconnectCommand,
 } from "./commands/index";
 import { definePluginEntry } from "openclaw/plugin-sdk/plugin-entry";
-import type { OpenClawPluginApi } from "openclaw/plugin-sdk/plugin-entry";
 import { Type } from "@sinclair/typebox";
 import type { Client } from "@libsql/client";
 
@@ -41,15 +40,7 @@ function getConfig(pluginConfig?: Record<string, unknown>) {
   };
 }
 
-// Helper to wrap handler as AgentTool execute signature: (toolCallId, params) => Promise<AgentToolResult>
-function wrapExecute(handler: (params: Record<string, unknown>) => Promise<unknown>) {
-  return async (_toolCallId: string, params: Record<string, unknown>) => {
-    const result = await handler(params);
-    return { content: [{ type: "text", text: JSON.stringify(result) }] };
-  };
-}
-
-function registerRideTools(api: OpenClawPluginApi, db: Client, config: ReturnType<typeof getConfig>) {
+function registerRideTools(api: Parameters<Parameters<typeof definePluginEntry>[0]["register"]>[0], db: Client, config: ReturnType<typeof getConfig>) {
   api.registerTool({
     name: "log_ride",
     label: "Log Ride",
@@ -76,8 +67,8 @@ function registerRideTools(api: OpenClawPluginApi, db: Client, config: ReturnTyp
         description: `Trip category. Defaults to ${config.defaultCategory}.`,
       }),
     }),
-    execute: wrapExecute((params) =>
-      handleLogRide(db, config, {
+    async execute(_id, params) {
+      const result = await handleLogRide(db, config, {
         provider: params.provider as string,
         amount: params.amount as number,
         currency: params.currency as string | undefined,
@@ -85,8 +76,9 @@ function registerRideTools(api: OpenClawPluginApi, db: Client, config: ReturnTyp
         pickup: params.pickup as string | undefined,
         dropoff: params.dropoff as string | undefined,
         category: params.category as string | undefined,
-      }),
-    ),
+      });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    },
   });
 
   api.registerTool({
@@ -109,15 +101,16 @@ function registerRideTools(api: OpenClawPluginApi, db: Client, config: ReturnTyp
       start_date: Type.Optional(Type.String({ description: "Start date filter (ISO 8601)" })),
       end_date: Type.Optional(Type.String({ description: "End date filter (ISO 8601)" })),
     }),
-    execute: wrapExecute((params) =>
-      handleListRides(db, {
+    async execute(_id, params) {
+      const result = await handleListRides(db, {
         limit: params.limit as number | undefined,
         provider: params.provider as string | undefined,
         category: params.category as string | undefined,
         start_date: params.start_date as string | undefined,
         end_date: params.end_date as string | undefined,
-      }),
-    ),
+      });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    },
   });
 
   api.registerTool({
@@ -129,12 +122,13 @@ function registerRideTools(api: OpenClawPluginApi, db: Client, config: ReturnTyp
       query: Type.String({ description: "Location search term (e.g., 'Orchard', 'MBS', 'Airport')" }),
       limit: Type.Optional(Type.Number({ description: "Max results (default 10)" })),
     }),
-    execute: wrapExecute((params) =>
-      handleSearchRides(db, {
+    async execute(_id, params) {
+      const result = await handleSearchRides(db, {
         query: params.query as string,
         limit: params.limit as number | undefined,
-      }),
-    ),
+      });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    },
   });
 
   api.registerTool({
@@ -151,15 +145,16 @@ function registerRideTools(api: OpenClawPluginApi, db: Client, config: ReturnTyp
       pickup: Type.Optional(Type.String({ description: "New pickup location" })),
       dropoff: Type.Optional(Type.String({ description: "New dropoff location" })),
     }),
-    execute: wrapExecute((params) =>
-      handleUpdateRide(db, {
+    async execute(_id, params) {
+      const result = await handleUpdateRide(db, {
         ride_id: params.ride_id as number,
         amount: params.amount as number | undefined,
         category: params.category as string | undefined,
         pickup: params.pickup as string | undefined,
         dropoff: params.dropoff as string | undefined,
-      }),
-    ),
+      });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    },
   });
 
   api.registerTool({
@@ -169,9 +164,10 @@ function registerRideTools(api: OpenClawPluginApi, db: Client, config: ReturnTyp
     parameters: Type.Object({
       ride_id: Type.Number({ description: "ID of the ride to delete" }),
     }),
-    execute: wrapExecute((params) =>
-      handleDeleteRide(db, params.ride_id as number),
-    ),
+    async execute(_id, params) {
+      const result = await handleDeleteRide(db, params.ride_id as number);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    },
   });
 
   api.registerTool({
@@ -188,13 +184,14 @@ function registerRideTools(api: OpenClawPluginApi, db: Client, config: ReturnTyp
         description: "How to break down the stats (default: provider)",
       }),
     }),
-    execute: wrapExecute((params) =>
-      handleSpendingStats(db, {
+    async execute(_id, params) {
+      const result = await handleSpendingStats(db, {
         start_date: params.start_date as string,
         end_date: params.end_date as string,
         group_by: params.group_by as "provider" | "category" | "month" | undefined,
-      }),
-    ),
+      });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    },
   });
 
   api.registerTool({
@@ -210,13 +207,14 @@ function registerRideTools(api: OpenClawPluginApi, db: Client, config: ReturnTyp
         description: `Budget currency. Defaults to ${config.defaultCurrency}. Changing currency recomputes all ride totals.`,
       }),
     }),
-    execute: wrapExecute((params) =>
-      handleSetBudget(db, config, {
+    async execute(_id, params) {
+      const result = await handleSetBudget(db, config, {
         monthly_limit: params.monthly_limit as number,
         alert_threshold: params.alert_threshold as number | undefined,
         currency: params.currency as string | undefined,
-      }),
-    ),
+      });
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    },
   });
 
   api.registerTool({
@@ -225,7 +223,10 @@ function registerRideTools(api: OpenClawPluginApi, db: Client, config: ReturnTyp
     description:
       "Get current month's ride spending relative to the budget. Shows total spent, remaining, and whether the alert threshold has been exceeded.",
     parameters: Type.Object({}),
-    execute: wrapExecute(() => handleGetBudgetStatus(db)),
+    async execute(_id) {
+      const result = await handleGetBudgetStatus(db);
+      return { content: [{ type: "text", text: JSON.stringify(result) }] };
+    },
   });
 }
 
@@ -308,9 +309,10 @@ export default definePluginEntry({
         }),
         months: Type.Optional(Type.Number({ description: "Number of months of history to sync (e.g., 6 for last 6 months). Omit to sync only new emails since last sync." })),
       }),
-      execute: wrapExecute((params) =>
-        handleSyncRideEmails(db, syncConfig, params.provider as string | undefined, params.months as number | undefined, tokensPath),
-      ),
+      async execute(_id, params) {
+        const result = await handleSyncRideEmails(db, syncConfig, params.provider as string | undefined, params.months as number | undefined, tokensPath);
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      },
     });
 
     // Screenshot tool
@@ -322,12 +324,13 @@ export default definePluginEntry({
       parameters: Type.Object({
         image_url: Type.String({ description: "URL of the receipt image" }),
       }),
-      execute: wrapExecute((params) =>
-        handleParseReceiptScreenshot(
+      async execute(_id, params) {
+        const result = await handleParseReceiptScreenshot(
           params.image_url as string,
           config.googleAiApiKey,
-        ),
-      ),
+        );
+        return { content: [{ type: "text", text: JSON.stringify(result) }] };
+      },
     });
 
     // Commands

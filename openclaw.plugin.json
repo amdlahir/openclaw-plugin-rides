@@ -3,6 +3,20 @@
   "name": "Rides",
   "description": "Track Singapore ride-hailing expenses by syncing Gmail receipts and parsing screenshots. Supports Grab, Gojek, and more with budget tracking and currency conversion.",
   "skills": ["./skills"],
+  "contracts": {
+    "tools": [
+      "log_ride",
+      "list_rides",
+      "search_rides",
+      "update_ride",
+      "delete_ride",
+      "ride_spending_stats",
+      "set_ride_budget",
+      "get_budget_status",
+      "sync_ride_emails",
+      "parse_receipt_screenshot"
+    ]
+  },
   "configSchema": {
     "type": "object",
     "additionalProperties": false,
