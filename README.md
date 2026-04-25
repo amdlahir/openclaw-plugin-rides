@@ -144,6 +144,114 @@ Merge these into your existing config -- don't replace the whole file. Using `to
 | `defaultCurrency` | No | `SGD` | Default currency for rides and budgets (`SGD`, `USD`, `MYR`) |
 | `defaultCategory` | No | `personal` | Default category for rides (`work`, `personal`) |
 
+## Storing Credentials with SecretRefs (Recommended)
+
+Instead of putting secrets in plaintext in `openclaw.json`, you can use OpenClaw's [SecretRefs](https://docs.openclaw.ai/gateway/secrets) to reference credentials from environment variables, a local secrets file, or an external secret manager (1Password, HashiCorp Vault, sops, etc.).
+
+The plugin doesn't need any code changes -- OpenClaw resolves SecretRefs before passing config values to the plugin at runtime.
+
+### Option A: Environment variables
+
+Set the secrets in your shell profile (`.bashrc`, `.zshrc`, or a `.env` file loaded by your init system):
+
+```bash
+export RIDES_GOOGLE_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+export RIDES_GOOGLE_CLIENT_SECRET="GOCSPX-xxxxxxxxxx"
+export RIDES_GOOGLE_AI_API_KEY="AIzaSyxxxxxxxxxx"
+```
+
+Then configure the plugin to reference them:
+
+```json
+{
+  "plugins": {
+    "entries": {
+      "rides": {
+        "enabled": true,
+        "config": {
+          "googleClientId": { "source": "env", "provider": "default", "id": "RIDES_GOOGLE_CLIENT_ID" },
+          "googleClientSecret": { "source": "env", "provider": "default", "id": "RIDES_GOOGLE_CLIENT_SECRET" },
+          "baseUrl": "http://localhost:18789",
+          "googleAiApiKey": { "source": "env", "provider": "default", "id": "RIDES_GOOGLE_AI_API_KEY" }
+        }
+      }
+    }
+  }
+}
+```
+
+Non-secret values like `baseUrl`, `defaultCurrency`, and `defaultCategory` can remain as plain strings.
+
+### Option B: Local secrets file
+
+1. Create a secrets file (outside version control):
+
+```bash
+cat > ~/.openclaw/secrets.json << 'EOF'
+{
+  "/rides/googleClientId": "your-client-id.apps.googleusercontent.com",
+  "/rides/googleClientSecret": "GOCSPX-xxxxxxxxxx",
+  "/rides/googleAiApiKey": "AIzaSyxxxxxxxxxx"
+}
+EOF
+chmod 600 ~/.openclaw/secrets.json
+```
+
+2. Add the file provider and references to your config:
+
+```json
+{
+  "secrets": {
+    "providers": {
+      "ridesfile": {
+        "source": "file",
+        "path": "~/.openclaw/secrets.json",
+        "mode": "json"
+      }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "rides": {
+        "enabled": true,
+        "config": {
+          "googleClientId": { "source": "file", "provider": "ridesfile", "id": "/rides/googleClientId" },
+          "googleClientSecret": { "source": "file", "provider": "ridesfile", "id": "/rides/googleClientSecret" },
+          "baseUrl": "http://localhost:18789",
+          "googleAiApiKey": { "source": "file", "provider": "ridesfile", "id": "/rides/googleAiApiKey" }
+        }
+      }
+    }
+  }
+}
+```
+
+### Option C: External secret manager (1Password, Vault, sops)
+
+For external providers, use the `exec` source. The provider runs a command and returns the resolved value. See the [OpenClaw Secrets docs](https://docs.openclaw.ai/gateway/secrets) for full provider configuration including 1Password, HashiCorp Vault, and sops examples.
+
+### Auditing and validation
+
+After configuring SecretRefs, audit your setup:
+
+```bash
+# Check for any remaining plaintext secrets
+openclaw secrets audit --check
+
+# Reload secrets into the runtime (gateway must be running)
+openclaw secrets reload
+```
+
+### Using the interactive wizard
+
+OpenClaw also provides an interactive setup flow:
+
+```bash
+openclaw secrets configure
+```
+
+This walks you through provider setup, credential mapping, and preflight validation.
+
 ## Setting Up Google Cloud (Gmail Sync)
 
 Gmail sync requires a Google Cloud OAuth2 client. Follow these steps:
